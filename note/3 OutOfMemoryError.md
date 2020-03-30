@@ -186,3 +186,107 @@ public void stackLeak(){
 
 * 单个线程下，无论栈帧太大，还是虚拟机栈容量太小，当内存无法分配时候，都抛出 StackOverflowError 异常；
 * 多线程环境下，创建大量的线程可以出现 OOM 异常，但是和栈空间是否足够大无任何关系，因为线程本身需要占用内存，大量线程必然导致进程内存枯竭，导致 OOM 异常。
+
+#### 4 方法区和运行时常量池溢出
+
+##### 4.1 简述
+
+运行时常量池是方法区一部分，所以我们直接通过频繁创建运行时常量池中的对象来测试方法区 OOM溢出。
+
+##### 4.2 **测试代码**
+
+```java
+package com.skylaker.jvm.rtda;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * 运行时常量池内存溢出测试
+ *
+ *  VM参数设置： -XXPermSize=10M -XX:MaxPermSize=10M
+ * 分别在 JDK1.6、JDK1.7 和 JDK1.8 环境下运行
+ *
+ * @author skylaker
+ * @version V1.0 2020/3/30 20:56
+ */
+public class RuntimeConstantPoolOOM {
+    public static void main(String[] args) {
+        // 这里List保持对常量池中字符串常量引用，避免 Full GC 时候回收常量池
+        List<String> list = new ArrayList<String>();
+
+        // 这里循环产生字符串，而 i 变量是有范围的，Integer 范围内，
+        // 不过这个范围内产生的字符串数量足够超出方法区 10M 的限制
+        int  i = 0;
+        while (true){
+            list.add(String.valueOf(i++).intern());
+        }
+    }
+}
+```
+
+##### 4.3 运行测试
+
+这里我们在不同的 JDK 环境下测试：
+
+###### 4.3.1  **JDK 1.6**
+
+JDK1.6环境运行： 虚拟机参数  **-XX:PermSize=10M  -XX:MaxPermSize=10M**，限制方法区大小为 10M
+
+![1585574067131](images.assets/1585574067131.png)
+
+
+
+这里说下在 1.6 环境下运行，我们需要单独下载下 JDK1.6，然后 IDEA 配置下相关编译运行环境：
+
+![1585574088941](images.assets/1585574088941.png)
+
+![1585574100399](images.assets/1585574100399.png)
+
+如果maven指定了 JDK 编译版本也改下：
+
+![1585574120713](images.assets/1585574120713.png)
+
+![1585574225404](images.assets/1585574225404.png)
+
+###### 4.3.2  **JDK 1.7**
+
+JDK1.7 运行，还是设置虚拟机参数  **-XX:PermSize=10M  -XX:MaxPermSize=10M**，限制方法区大小为 10M，结果在 int 数值范围内一直运行：
+
+![1585574331194](images.assets/1585574331194.png)
+
+但是我们把虚拟机参数设置为：**-Xms10m -Xmx10m -XX:+HeapDumpOnOutOfMemoryError**，即限制堆内存的大小，结果：
+
+![1585574899628](images.assets/1585574899628.png)
+
+发生了 OOM 异常，而这个异常原因是因为 GC overhead limit ，Oracle官方解释：
+
+```java
+Exception in thread thread_name: java.lang.OutOfMemoryError: GC Overhead limit exceeded
+Cause: The detail message "GC overhead limit exceeded" indicates that the garbage collector is running all the time and Java program is making very slow progress. After a garbage collection, if the Java process is spending more than approximately 98% of its time doing garbage collection and if it is recovering less than 2% of the heap and has been doing so far the last 5 (compile time constant) consecutive garbage collections, then a java.lang.OutOfMemoryError is thrown. This exception is typically thrown because the amount of live data barely fits into the Java heap having little free space for new allocations.
+Action: Increase the heap size. The java.lang.OutOfMemoryError exception for GC Overhead limit exceeded can be turned off with the command line flag -XX:-UseGCOverheadLimit.
+```
+
+这个是指 GC占用了大量时间，垃圾收集器一直在努力的收集垃圾，释放内存，但是努力了几次花费了大量时间后发现实际释放的内存很少，感觉努力没啥作用呢，算了放弃吧，就会报出这个异常。
+
+那这里为啥报这个呢？这个正是因为在 **JDK1.7 中运行时常量池移到了堆内存中**，我们限制了堆内存大小，程序中不停的创建对象，但是又因为又List集合引用，导致垃圾收集器判断这些并非是垃圾，导致回收不了，最终导致不管怎么努力回收都无济于事。
+
+我们可以查看下堆内存转储快照文件：
+
+![1585575649043](images.assets/1585575649043.png)
+
+可以看到大量的字符串类型数据，同时通过引用分许，这些字符串都是被 main 主线程中的 List 集合引用：
+
+![1585575797946](images.assets/1585575797946.png)
+
+###### 4.3.3  JDK 1.8
+
+JDK 1.8 运行，设置虚拟机参数： -XX:PermSize=10M  -XX:MaxPermSize=10M ，循环中加入打印数值，也是在 int 数值范围内一直运行：
+
+![1585574505612](images.assets/1585574505612.png)
+
+其实这里设置的虚拟机参数是**无效**的，**JDK8中已经完全移除了方法区，PermSize和MaxPermSize参数也一并移除了**，运行时常量池还是在堆内存中，我们可以继续测试，设置虚拟机参数限制堆内存大小：**-Xms10m -Xmx10m -XX:+HeapDumpOnOutOfMemoryError**
+
+![1585576000053](images.assets/1585576000053.png)
+
+可以看到报堆内存溢出错误。那么这里可能就有疑问了，同样运行时常量池在堆中，为啥1.7溢出报 GC overhead limit ，而 1.8 中报  Java heap space 信息呢？其实这个和 JDK 版本无关，本质都是堆内存溢出，至于说具体报哪个异常原因信息，不一定，上面  GC overhead limit 具体解释中也说了 GC “花费了 98% 的时间，但是只回收了 2% 的内存并且一般至少 5 次 GC 垃圾回收” 情况下会报这个信息，那么如果在第一次 GC 垃圾回收就发现堆内存不够了呢？那不就直接 OOM：Java heap space 么。
