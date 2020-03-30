@@ -290,3 +290,95 @@ JDK 1.8 运行，设置虚拟机参数： -XX:PermSize=10M  -XX:MaxPermSize=10M 
 ![1585576000053](images.assets/1585576000053.png)
 
 可以看到报堆内存溢出错误。那么这里可能就有疑问了，同样运行时常量池在堆中，为啥1.7溢出报 GC overhead limit ，而 1.8 中报  Java heap space 信息呢？其实这个和 JDK 版本无关，本质都是堆内存溢出，至于说具体报哪个异常原因信息，不一定，上面  GC overhead limit 具体解释中也说了 GC “花费了 98% 的时间，但是只回收了 2% 的内存并且一般至少 5 次 GC 垃圾回收” 情况下会报这个信息，那么如果在第一次 GC 垃圾回收就发现堆内存不够了呢？那不就直接 OOM：Java heap space 么。
+
+##### 4.4 String.intern() 方法探究
+
+###### 4.4.1 代码
+
+```java
+package com.skylaker.jvm.rtda;
+
+/**
+ * @author skylaker
+ * @version V1.0 2020/3/30 22:06
+ */
+public class StringIntern {
+    public static void main(String[] args) {
+        String a = new String("中国");
+        String b = a.intern();
+
+        System.out.println(a == b);
+
+        String c = "中国";
+        System.out.println(a == c);
+        System.out.println(b == c);
+
+        String d = new StringBuilder("华").append("夏").toString();
+        String e = d.intern();
+
+        System.out.println(d == e);
+    }
+}
+```
+
+* 运行结果
+
+  JDK 1.6 
+
+  ![1585583399484](images.assets/1585583399484.png)
+
+   JDK  1.7 、JDK1.8
+
+  ![1585583439387](images.assets/1585583439387.png)
+
+###### 4.4.2 intern版本差异
+
+* JDK 1.6 
+
+  intern() 方法会把**首次**遇到的字符串**实例**复制到永久代中，返回的也是永久代中这个字符串实例的**引用**；
+
+  如果不是首次，说明常量池中已经有该字符串，直接返回池中的引用。
+
+* JDK 1.7 以上
+
+  intern() 不会再复制实例，只是在常量池中记录**首次**出现的**实例引用**。
+
+  如果不是首次，则直接返回池中引用。
+
+###### 4.4.3 分析
+
+对于代码：
+
+```java
+String a = new String("中国");
+String b = a.intern();
+System.out.println(a == b);
+```
+
+这里因为 ”中国“ 是字面量，在代码编译期间就放到常量池，new String() 是在堆中创建一个新的字符串实例对象，
+
+a.intern() 去常量池看看是否已经存在这个字面量对应的内容，不管是 JDK 1.6 字符串对象实例还是 JDK 1.7 后的对象引用，都是发现已经存在了，所以返回常量池中的引用，那么和 new String() 出来的对象自然不是同一个，所以都是返回  false ;
+
+而再去执行  `String c = "中国";` 时候，同样也是去常量池看看是否已经存在这个字面量对应的内容，不管是 JDK 1.6 字符串对象实例还是 JDK 1.7 后的对象引用，都是发现已经存在了，所以返回常量池中的引用，自然变量 b 和 c 指向同一个对象，所以比价返回 true；
+
+```java
+String d = new StringBuilder("华").append("夏").toString();
+String e = d.intern();
+System.out.println(d == e);
+```
+而采用 StringBuilder 或者 + 拼接生成字符串方式，都是动态生成的，没有编译期优化，自然只会创建堆中字符串对象，调用 d.intern() 时候：
+
+* **JDK1.6** 
+
+  发现常量池没有，直接复制一份字符串实例到常量池，再返回这个常量池中的字符串常量池引用，那么也就造成 d 和 e 不是同一个对象；
+
+![1585586439588](images.assets/1585586439588.png)
+
+* **JDK 1.7 之后** 
+
+  调用 d.intern() 时候，发现常量池没有，直接将变量 d 指向的字符串对象堆内存地址复制到常量池，即 e 其实也是指向 d 指向的对象，自然 d == e 就是 true。
+
+<img src="images.assets/1585586425624.png" alt="1585586425624" style="zoom:80%;" />
+
+说实话个人感觉这个玩意是真绕，实际遇到可以测试代码跑一遍，而且一般不用即可，自己绕晕，代码容易写错。
+
