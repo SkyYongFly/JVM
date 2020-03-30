@@ -20,7 +20,7 @@ Java虚拟机规范，除了程序计数器外，虚拟机内存的其它几个�
 
 * JDK版本
 
-  1.8，特定场景采用1.7、1.6，会有特殊说明。
+  1.8，64位 ，特定场景采用1.7、1.6，会有特殊说明。
 
 #### 2 堆溢出
 
@@ -108,3 +108,81 @@ public class HeapOOM {
 
   如果说发生了 OOM ，但是经过排查对象确实应该需要存在，确实很占用内存，那么就需要考虑是不是应用内存设置太小了，那么就通过 -Xms  -Xmx 等参数调大应用内存。
 
+#### 3 虚拟机栈和本地方法栈溢出
+
+##### 3.1 简述
+
+HotSpot 虚拟机虚拟机栈和本地方法栈合二为一，设置本地方法栈大小 -Xoss 实际无效，栈容量只由 -Xss 设定。
+
+虚拟机栈和本地方法栈，虚拟机描述了两种异常：
+
+* **StackOverflowError异常**
+
+  如果线程请求的栈深度大于虚拟机所允许的最大深度（这里没有说请求的栈帧个数太多，而是线程虚拟机栈中存在的栈帧占用内存太大，导致栈空间不够），将抛出栈溢出异常；
+
+* **OutOfMemoryError异常**
+
+  如果虚拟机在扩展时候无法申请到足够的内存空间，则抛出OOM异常；
+
+两种异常存在重叠，本质上对同一件事的两种描述，例如栈空间不够继续分配，到底是因为已分配栈空间太大还是因为内存太小？
+
+##### 3.2 测试代码
+
+```java
+package com.skylaker.jvm.rtda;
+
+/**
+ * HotSpot 虚拟机栈（和本地方法栈）溢出异常测试
+ *
+ *  VM 参数设置 -Xss128k
+ *
+ * @author skylaker
+ * @version V1.0 2020/3/30 20:33
+ */
+public class StackSOF {
+    private int stackLength = 1;
+
+    /**
+     * 这里通过递归循环调用自身，造成大量方法栈栈入栈
+     */
+    public void stackLeak(){
+        stackLength++;
+        stackLeak();
+    }
+
+    public static void main(String[] args) {
+        StackSOF stackSOF = new StackSOF();
+
+        try{
+            stackSOF.stackLeak();
+        } catch (Throwable e){
+            System.out.println("当前栈深度：" + stackSOF.stackLength);
+            throw e;
+        }
+    }
+}
+```
+
+![1585572014489](images.assets/1585572014489.png)
+
+我们也可以在方法中定义多个局部变量，这样增大单个栈帧大小，那么能够入栈的栈帧数量必然减少：
+
+```java
+public void stackLeak(){
+    int a = 0;
+    int b = 0;
+    int c = 0;
+    int d = 0;
+    stackLength++;
+    stackLeak();
+}
+```
+
+![1585572178708](images.assets/1585572178708.png)
+
+
+
+测试结果：
+
+* 单个线程下，无论栈帧太大，还是虚拟机栈容量太小，当内存无法分配时候，都抛出 StackOverflowError 异常；
+* 多线程环境下，创建大量的线程可以出现 OOM 异常，但是和栈空间是否足够大无任何关系，因为线程本身需要占用内存，大量线程必然导致进程内存枯竭，导致 OOM 异常。
