@@ -382,7 +382,147 @@ System.out.println(d == e);
 
 说实话个人感觉这个玩意是真绕，实际遇到可以测试代码跑一遍，而且一般不用即可，自己绕晕，代码容易写错。不过在利用对象单例复用特性可以降低内存占用，在特定场景下具有奇特功效。
 
+#### 5 方法区/元数据区溢出
 
+##### 5.1 简述
+
+JDK1.7之前：方法区用于存放Class的相关信息，如类名、访问修饰符、常量池、字段描述、方法描述等。
+
+JDK1.8后，移除了方法区，用 Metaspace 元数据区替代了方法区，Class 相关的信息移动到元数据区。
+
+我们可以通过创建大量的类区填满方法区/元数据区测试，直到溢出。
+
+##### 5.1 方法区
+
+* 测试环境 
+
+  JDK1.7
+
+- maven依赖
+
+  利用 cglib 动态生成大量类字节码，所以先增加下 maven 依赖：
+
+```xml
+ <dependency>
+    <groupId>cglib</groupId>
+    <artifactId>cglib</artifactId>
+    <version>2.2.2</version>
+ </dependency>
+```
+
+- 代码
+
+  ```java
+  package com.skylaker.jvm.rtda;
+  
+  import net.sf.cglib.proxy.Enhancer;
+  import net.sf.cglib.proxy.MethodInterceptor;
+  import net.sf.cglib.proxy.MethodProxy;
+  
+  import java.lang.reflect.Method;
+  
+  /**
+   * JDK7 测试方法区OOM
+   * @author skylaker
+   * @version V1.0 2020/3/31 19:36
+   */
+  public class MethodAreaOOM {
+  
+      static class OOMObject {
+  
+      }
+  
+      public static void main(final String[] args) {
+          while (true) {
+              Enhancer enhancer = new Enhancer();
+              enhancer.setSuperclass(OOMObject.class);
+              enhancer.setUseCache(false);
+              enhancer.setCallback(new MethodInterceptor() {
+                  @Override
+                  public Object intercept(Object o, Method method, Object[] objects, MethodProxy methodProxy) throws Throwable {
+                      return methodProxy.invokeSuper(objects, args);
+                  }
+              });
+              enhancer.create();
+          }
+      }
+  }
+  ```
+
+* JVM参数设置
+
+  **-XX:PermSize=20M   -XX:MaxPermSize=20M  -XX:+HeapDumpOnOutOfMemoryError**
+
+* 运行结果
+
+  ![1585657690458](images.assets/1585657690458.png)
+
+  可以看到发生了 OOM ，并且区域是 方法区，这里我们转储了内存快照文件，可以用 mat 分析下：
+
+  ![1585657900557](images.assets/1585657900557.png)
+
+  可以看到大量的我们动态创建的字节码内容。
+
+##### 5.2 元数据区
+
+* 测试环境 
+
+  JDK1.8
+
+* maven依赖
+
+  利用 cglib 动态生成大量类字节码，所以先增加下 maven 依赖：
+
+```xml
+ <dependency>
+    <groupId>cglib</groupId>
+    <artifactId>cglib</artifactId>
+    <version>2.2.2</version>
+ </dependency>
+```
+
+* 代码
+
+```java
+package com.skylaker.jvm.rtda;
+
+import net.sf.cglib.proxy.Enhancer;
+import net.sf.cglib.proxy.MethodInterceptor;
+
+/**
+ * JDK8 测试元数据区OOM
+ * @author skylaker
+ * @version V1.0 2020/3/31 19:48
+ */
+public class MetaspaceOOM {
+
+    static class OOMObject {
+
+    }
+
+    public static void main(String[] args) {
+        while (true) {
+            Enhancer enhancer = new Enhancer();
+            enhancer.setSuperclass(OOMObject.class);
+            enhancer.setUseCache(false);
+            enhancer.setCallback((MethodInterceptor) (o, method, objects, methodProxy) -> methodProxy.invokeSuper(objects, args));
+            enhancer.create();
+        }
+    }
+}
+```
+
+* JVM参数
+
+  **-XX:MetaspaceSize=10M  -XX:MaxMetaspaceSize=15M**
+
+  这里我们设置触发元数据区的大小为10M，最大元数据区内存15M。
+
+* 执行结果
+
+  ![1585656007132](images.assets/1585656007132.png)
+
+  可以看到显示 OOM 异常，并且是 Metaspace  区域。
 
 
 
