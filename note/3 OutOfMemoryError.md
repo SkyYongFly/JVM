@@ -8,7 +8,9 @@ Java虚拟机规范，除了程序计数器外，虚拟机内存的其它几个�
 
 * 内存溢出分析工具
 
-  为了分析 OOM 后的内存转储快照文件，我们用 Eclipse Memory Analyzer 这个工具：https://www.eclipse.org/mat/，下载完成之后，我们设置下，因为一般内存溢出后尤其堆内存溢出，快照文件很大，所以为了避免查看分析时候内存不足，调大 MAT 的内存设置：
+  为了分析 OOM 后的内存转储快照文件，我们用 Eclipse Memory Analyzer 这个工具：
+
+  [https://www.eclipse.org/mat/](https://www.eclipse.org/mat/) 下载完成之后，我们设置下，因为一般内存溢出后尤其堆内存溢出，快照文件很大，所以为了避免查看分析时候内存不足，调大 MAT 的内存设置：
 
   <img src="images.assets/1585569400630.png" alt="1585569400630" style="zoom:80%;" />
 
