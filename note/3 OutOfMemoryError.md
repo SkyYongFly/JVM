@@ -392,7 +392,7 @@ JDK1.8后，移除了方法区，用 Metaspace 元数据区替代了方法区，
 
 我们可以通过创建大量的类区填满方法区/元数据区测试，直到溢出。
 
-##### 5.1 方法区
+##### 5.2 方法区
 
 * 测试环境 
 
@@ -463,7 +463,7 @@ JDK1.8后，移除了方法区，用 Metaspace 元数据区替代了方法区，
 
   可以看到大量的我们动态创建的字节码内容。
 
-##### 5.2 元数据区
+##### 5.3 元数据区
 
 * 测试环境 
 
@@ -524,11 +524,61 @@ public class MetaspaceOOM {
 
   可以看到显示 OOM 异常，并且是 Metaspace  区域。
 
+5.4 注意事项
 
+在经常动态生成大量Class的应用中，需要注意类的回收情况，相关场景：
 
+* 使用 CGLib 字节码增强和动态语言；
+* 大量 JSP 或动态产生 JSP 的应用 （JSP 本质上是 servlet，第一次运行需要编译为java类）；
+* 基于 OSGi 的应用（同一个类文件，不同的类加载器加载也是被当作不同的类）。
 
+#### 6 本机直接内存溢出
 
+##### 6.1 简述
 
+DirectMemory 本机直接内存容量可通过 -XX：MaxDirectMemorySize 指定，不知道则默认与 Java 堆最大值（-Xmx ）一样。
+
+##### 6.2 测试代码
+
+```java
+package com.skylaker.jvm.rtda;
+
+import sun.misc.Unsafe;
+
+import java.lang.reflect.Field;
+
+/**
+ * 直接内存溢出测试
+ *
+ *  JVM 参数：
+ *
+ * @author skylaker
+ * @version V1.0 2020/3/31 20:41
+ */
+public class DirectMemoryOOM {
+    private static final int _1MB = 1024 * 1024;
+
+    public static void main(String[] args) throws IllegalAccessException {
+        // 通过反射获取 Unsafe 实例
+        Field unsafeField = Unsafe.class.getDeclaredFields()[0];
+        unsafeField.setAccessible(true);
+        Unsafe unsafe = (Unsafe) unsafeField.get(null);
+
+        while (true) {
+            // 向底层操作系统申请分配内存
+            unsafe.allocateMemory(_1MB);
+        }
+    }
+}
+```
+
+这里通过反射获取 Unsafe 类实例，调用底层操作系统不停申请内存，运行结果：
+
+![1585658954621](images.assets/1585658954621.png)
+
+##### 6.3 注意事项
+
+直接内存溢出，一个明显特征是 Heap Dump 文件中不会看见明显异常，OOM 后 Dump 文件很小，程序中又直接或间接使用了 NIO，可以考虑排查下直接内存分配导致 OOM 。
 
 
 

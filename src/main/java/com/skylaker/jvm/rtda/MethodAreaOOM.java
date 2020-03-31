@@ -8,6 +8,9 @@ import java.lang.reflect.Method;
 
 /**
  * JDK7 测试方法区OOM
+ *
+ * JVM参数：-XX:PermSize=20M   -XX:MaxPermSize=20M  -XX:+HeapDumpOnOutOfMemoryError
+ *
  * @author skylaker
  * @version V1.0 2020/3/31 19:48
  */

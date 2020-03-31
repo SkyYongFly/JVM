@@ -5,6 +5,9 @@ import net.sf.cglib.proxy.MethodInterceptor;
 
 /**
  * JDK8 测试元数据区OOM
+ *
+ * JVM参数：-XX:MetaspaceSize=10M -XX:MaxMetaspaceSize=15M
+ *
  * @author skylaker
  * @version V1.0 2020/3/31 19:48
  */
