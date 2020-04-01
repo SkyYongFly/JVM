@@ -6,8 +6,8 @@
       - [HotSpot虚拟机对象](https://github.com/SkyYongFly/JVM/blob/master/note/2%20HotSpotObject.md)
       - [实战 OOM](https://github.com/SkyYongFly/JVM/blob/master/note/3%20OutOfMemoryError.md)
     - 1.2 垃圾收集器与内存分配策略 
-      * 判断对象是否存活算法
-      * 垃圾收集算法
+      - [判断对象是否存活算法](https://github.com/SkyYongFly/JVM/blob/master/note/4%20ObjectInventoryJudgment.md)
+      - [垃圾收集算法](https://github.com/SkyYongFly/JVM/blob/master/note/5%20GarbageCollectionAlgorithm.md)
       * 垃圾收集器
       * 内存分配与回收策略
     - 1.3 虚拟机性能监控与故障处理 TODO
