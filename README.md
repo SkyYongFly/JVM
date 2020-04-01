@@ -5,7 +5,11 @@
       - [运行时数据区域](https://github.com/SkyYongFly/JVM/blob/master/note/1%20RunTimeDataAreas.md)
       - [HotSpot虚拟机对象](https://github.com/SkyYongFly/JVM/blob/master/note/2%20HotSpotObject.md)
       - [实战 OOM](https://github.com/SkyYongFly/JVM/blob/master/note/3%20OutOfMemoryError.md)
-    - 1.2 垃圾收集器与内存分配策略 TODO
+    - 1.2 垃圾收集器与内存分配策略 
+      * 判断对象是否存活算法
+      * 垃圾收集算法
+      * 垃圾收集器
+      * 内存分配与回收策略
     - 1.3 虚拟机性能监控与故障处理 TODO
 - 2 虚拟机执行子系统 TODO
 - 3 程序编译与代码优化 TODO
