@@ -180,13 +180,51 @@
 
 #### 4 动态对象年龄判定
 
-* 为适应不同程序内存状况，虚拟机并不是总要求对象年龄必须达到 MaxTenuringThreshold 才能晋升老年代；
+* 概述
+  * 为适应不同程序内存状况，虚拟机并不是总要求对象年龄必须达到 MaxTenuringThreshold 才能晋升老年代；
+  * 如果 Survivor 空间中**相同年龄**所有对象大小的**总和大于** Survivor 空间的**一半**，年龄**大于或等于**该年龄的对象就可**直接进入老年代**，无需等到 MaxTenuringThreshold 中要求的年龄；
 
-* 如果 Survivor 空间中相同年龄所有对象大小的总和大于 Survivor 空间的一半，年龄大于或等于该年龄的对象就可直接进入老年代，无需等到 MaxTenuringThreshold 中要求的年龄；
+* 测试
 
-  
+  * 代码
+
+    ```java
+    private static final int SIZE_1MB = 1024 * 1024;
+    
+    public static void main(String[] args) {
+            byte[] a, b, c, d, e;
+    
+            a = new byte[512 * 1024];    // 0.5M
+            e = new byte[512 * 1024];    // 0.5M
+            b = new byte[4 * SIZE_1MB];
+            c = new byte[4 * SIZE_1MB];
+            c = null;
+            d = new byte[4 * SIZE_1MB];
+    }
+    ```
+
+  - JDK 1.8.0_161
+
+  - 虚拟机参数
+
+    - 对象晋升年龄**阈值 15**
+
+    ```
+    -Xms20m -Xmx20m -Xmn10m -XX:+PrintGCDetails -XX:+UseSerialGC -XX:SurvivorRatio=3 
+    -XX:MaxTenuringThreshold=15
+    ```
+
+    ​	这里设置 Eden 大小 6M, S0 和 S1 大小 2M，设置对象年龄阈值15
+
+  * 执行结果
+
+    ![1586535890764](images.assets/1586535890764.png)
+
+    可以看到第一次 Minor GC 垃圾回收后新生代占用1729K，a 和 e 对象还在新生代，后两次 Minor GC 直接新生代主要回收新生代中 b、c 对象（b进入老年代，c 被当成垃圾回收），而 a、e 因为整体总和大小达到 S0 或 S1 的一半，所以直接晋升到老年代，可以看到老年代占用 56%，其中除了 b 对象 占用 40% 外，a 和 e 大约 10% （还有些系统资源对象）。
 
 #### 5 空间分配担保
+
+##### 5.1 概述
 
 * 在发生 Minor GC 之前，虚拟机检查老年代**最大可用的连续空间**是否**大于**新生代所有对象**总空间**；
   * 如果这个条件成立，那么 Minor GC 可以确保是安全的；
