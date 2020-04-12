@@ -12,9 +12,9 @@ public class GCLog {
     public static void main(String[] args) {
         byte[] a, b, c, d;
 
-        a = new byte[2 * SIZE_1MB];
-        b = new byte[2 * SIZE_1MB];
-        c = new byte[2 * SIZE_1MB];
+        a = new byte[4 * SIZE_1MB];
+        b = new byte[4 * SIZE_1MB];
+        c = new byte[4 * SIZE_1MB];
         d = new byte[4 * SIZE_1MB];
     }
 }
