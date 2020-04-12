@@ -211,3 +211,116 @@
 * 运行示意图
 
   ![1586436132119](images.assets/1586436132119.png)
+
+#### 9 理解GC日志
+
+例如代码 （ JDK8 ）：
+
+```
+package com.skylaker.jvm.gc;
+
+/**
+ * -Xms20m -Xmx20m -Xmn10m -XX:+PrintGCDetails -XX:+UseSerialGC -XX:SurvivorRatio=8
+ *
+ * @author skylaker
+ * @version V1.0 2020/4/12 19:36
+ */
+public class GCLog {
+    private static final int SIZE_1MB = 1024 * 1024;
+
+    public static void main(String[] args) {
+        byte[] a, b, c, d;
+
+        a = new byte[4 * SIZE_1MB];
+        b = new byte[4 * SIZE_1MB];
+        c = new byte[4 * SIZE_1MB];
+        d = new byte[4 * SIZE_1MB];
+    }
+}
+```
+
+Eden 8M  , S0、S1 各 1M ，老年代 10M;
+
+* 对象分配过程：
+  * 先生成 4M 大小 a 对象，再 b 对象，此时 eden 不够（还有一些系统对象占用），Minor GC 后 a 进入老年代，b 在 eden 区;
+  * c 再来，又 Minor GC , b 进入老年代，老年代已占用 8M，c 在 eden 区；
+  * d 再来，又 Minor GC , c 进入老年代，但这个时候老年代已经容纳不下 c 对象了，所以要 Full GC ,  但是 Full GC 后并没有释放足够空间，所以 OOM 。
+
+* 实际执行 GC 日志
+
+  ![1586694409141](images.assets/1586694409141.png)
+
+* 日志分析
+
+  看下典型的三个日志
+
+  * GC日志1
+
+    ```java
+    [GC (Allocation Failure) [DefNew: 6444K->711K(9216K), 0.0036211 secs] 6444K->4807K(19456K), 0.0040462 secs] [Times: user=0.00 sys=0.00, real=0.00 secs] 
+    ```
+
+  * GC 日志2
+
+    ```java
+    [GC (Allocation Failure) [DefNew: 4151K->4151K(9216K), 0.0000101 secs][Tenured: 8897K->8897K(10240K), 0.0020422 secs] 13049K->12994K(19456K), [Metaspace: 3396K->3396K(1056768K)], 0.0021099 secs] [Times: user=0.00 sys=0.00, real=0.00 secs] 
+    ```
+
+  * GC日志3
+
+    ```java
+    [Full GC (Allocation Failure) [Tenured: 8897K->8878K(10240K), 0.0014446 secs] 12994K->12975K(19456K), [Metaspace: 3396K->3396K(1056768K)], 0.0014650 secs] [Times: user=0.00 sys=0.00, real=0.00 secs] 
+    ```
+
+     * 日志分析
+
+       * 开头的 "[GC"、“[Full GC” 说明了这次垃圾收集的停顿类型，而不是用来区分新生代 GC 还是老年代GC ！ 
+       * 如果有 “Full” 说明是发生 Stop-The-World 的，，一般是因为出现分配担保失败问题，例如上例中 GC日志3 就是因为对象c要进入老年代，但是老年代空间不足，造成分配担保失败；
+
+       * “[DefNew”、“[Tenured”、“[Perm” 表示发生 GC 的区域，这里显示的区域名称与使用的GC收集器相关；例如：
+
+         * **Serial** 收集器**新生代**名称为 “Default New Generation”  ， 所以显示的是 **“[DefNew**” ; 
+         * **ParNew** 收集器**新生代**名称为 “Parallel New Generation” , 显示的是 “**[ParNew**” ;
+         * **Parallel Scavenge** 收集器**新生代**称为 “**PsYoungGen**” ; 
+         * **Serial Old** 收集器**老年代** 显示的是 ：“ **[Tenured** ”
+
+         我们可以尝试切换下垃圾收集器，切换为 ParNew + CMS 收集器组合，JVM参数：
+
+         ```java
+         -Xms20m -Xmx20m -Xmn10m -XX:+PrintGCDetails -XX:+UseConcMarkSweepGC 
+         -XX:SurvivorRatio=8
+         ```
+
+         其中 -XX:+UseConcMarkSweepGC 表示采用  ParNew + CMS  +  Serial Old 收集器组合，Serial Old 作为 CMS 失败后备收集器使用；
+
+         ![1586695775478](images.assets/1586695775478.png)
+
+       * 接下来 例如 “ 6444K->711K(9216K)” 、"8897K->8878K(10240K)" 表示 ：
+
+         “**GC前该内存区域已使用容量—> GC后该内存区域已使用容量（该内存区域总容量）**”；
+
+         GC日志1中就代表新生代GC前后的内存变化；
+
+         ![1586696150035](images.assets/1586696150035.png)
+
+         GC日志3中就表示老年代GC前后的内存变化；
+
+         ![1586696170210](images.assets/1586696170210.png)
+
+       * 接下来的方括号后面的例如 GC日志1 中的 “6444K->4807K(19456K)”
+
+         ![1586696186479](images.assets/1586696186479.png)
+
+         表示 “**GC前 Java 堆已使用的容量—> GC 后Java堆已使用的容量（Java 堆总容量）**”
+
+       * 内存变化数据后的时间 表示该**内存区域 GC 所占用的时间**，单位是秒，
+
+         ![1586696893689](images.assets/1586696893689.png)
+
+         “[Times: user=0.00 sys=0.00, real=0.00 secs] ” 是更具体的时间数据，:
+
+         * user : 用户态消耗的CPU时间（多CPU情况下多线程会叠加这些时间）；
+         * sys：内核态消耗的CPU时间；
+         * real ：操作从开始到结束所经过的墙钟时间；
+
+       * 上面示例中GC日志2包含新生代、老年代、元数据区的GC内存区域变化情况，这个是因为在上个例子中  c 要进入老年代，但这个时候老年代已经容纳不下 c 对象了，所以引发了 Full GC ；而 GC日志3 正是对应的 Full GC 日志 （这里说的 Full GC 和日志开头的 Full GC 不是一个概念）。
