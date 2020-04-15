@@ -279,8 +279,9 @@ public class Student {
     * 描述符来描述方法时，按照**先参数列表**，**后返回值**的顺序描述，参数列表按照参数的严格顺序放在一组小括号“（）”之内；如方法 `java.lang.String  toString()` 的描述符为 “()Ljava/lang/String；”
 
 * **属性表集合**
-  * 在descriptor_index 之后的一个属性表集合用于存储一些额外的信息，字段都可以在属性表中描述零至多项 的额外信息，例如字段的初始设值信息（介绍属性表数据项目再详解）
-
+  
+* 在descriptor_index 之后的一个属性表集合用于存储一些额外的信息，字段都可以在属性表中描述零至多项 的额外信息，例如字段的初始设值信息（介绍属性表数据项目再详解）
+  
 * 示例代码
 
   **![1586868300812](images.assets/1586868300812.png)**
@@ -306,3 +307,219 @@ public class Student {
     属性表集合为 0x0000 , 即空；
 
     ![1586868628175](images.assets/1586868628175.png)
+
+##### 2.8 方法表集合
+
+* 方法表的结构如同字段表一样，依次包括了**访问标志**（access_flags）、**名称索引**（name_index）、**描述符索引**（descriptor_index）、**属性表集合**（attributes）几项
+
+  <img src="images.assets/1586953837586.png" alt="1586953837586" style="zoom:80%;" />
+
+* 方法表**访问标志**（access_flags）标志位及其取值
+
+  <img src="images.assets/1586953868780.png" alt="1586953868780" style="zoom:80%;" />
+
+* 方法里的Java代码，经过编译器编译成字节码指令后，存放在方法属性表集合中一个名为“Code”的属性里面；
+
+* 示例代码
+
+  ![1586954814455](images.assets/1586954814455.png)
+
+  * 第一个u2类型的数据（即是计数器容量）的值为 0x0007，代表集合中有7个方法（需要注意没有声明构造器的时候编译器会默认添加实例构造器<init>）；
+
+  * 下面我们看下第一个方法
+
+    * 方法的访问标志值为0x001，即 ACC_PUBLIC，说明是 public 方法； 
+
+    * 名称索引值为0x000A，查常量池得方法名为“＜init＞”，说明是构造方法；
+
+    * 描述符索引值为 0x000B，对应常量为 “()V”，说明是无参且返回值为 void ；
+
+    * 属性表计数器 attributes_count 的值为0x0001就表示此方法的属 性表集合有一项属性，属性名称索引为0x000C，对应常量为“Code”，说明此属性是方法的字节码描述；
+
+      其实这个 Code 属性就是代表方法中详细内容的字节码指令。
+
+    我们可以对照着反编译的指令码对照着看下：
+
+    ![1586955275539](images.assets/1586955275539.png)
+
+    ![1586955318183](images.assets/1586955318183.png)
+
+* 重载在语言层和字节码层次的区别
+
+  * Java语言重载（Overload）一个方法，名称相同，参数不同，无法通过返回值重载；
+  * 在Class文件格式中， 只要描述符不是完全一致的两个方法也可以共存；即两个方法名称相同、参数相同，但返回值不同，那么也是可以合法共存于同一个Class 文件中。
+
+##### 2.9 属性表集合
+
+* Class文件、字段表、方法表都可以携带自己的属性表（attribute_info）集合，以用于描述某些场景专有的信息；
+
+* 各个属性表可以没有严格的顺序，并且只要不与已有属性名重复；
+
+* 任何编译器都可以向属性表中写入自己定义的属性信息，Java虚拟机运行时会忽略掉它不认识的属性；
+
+* Java虚拟机规范预定义了21项虚拟机实现应当能识别的属性（Java SE 7）：
+
+  <img src="images.assets/1586955832292.png" alt="1586955832292" style="zoom:78%;" />
+
+  <img src="images.assets/1586955852737.png" alt="1586955852737" style="zoom:80%;" />
+
+* 属性表定义的结构
+
+  ![1586956169217](images.assets/1586956169217.png)
+
+  * 第一个名称需要从常量池中引用一个CONSTANT_Utf8_info类型的常量来表示；
+
+  * 第二个为u4的长度属性，说明属性值所占用的位数；
+  * 第三个就是对应的详细的属性内容，长度即第二个参数定义的值；
+
+* 详细的属性说明
+
+  * **Code 属性**
+
+    * Java程序方法体中的代码经过 Javac 编译器处理，变为字节码指令存储在Code属性内；
+
+    * Code属性出现在方法表的属性集合之中；
+
+    * 并非所有的方法表都必须存在这个属性，譬如接口或者抽象类中的方法就不存在Code属性；
+
+    * Code 属性表结构：
+
+      ![1586956369192](images.assets/1586956369192.png)
+
+      * attribute_name_index是指向CONSTANT_Utf8_info型常量的索引；常量值固定为“Code”，代表了该属性的属性名称；
+      * attribute_length指示了属性值的长度；
+      * max_stack代表了操作数栈（Operand Stacks）深度的最大值；
+      * max_locals代表了**局部变量表**所需的存储空间；
+        * max_locals的单位是**Slot**, Slot是虚拟机为局部变量分配内存所使用的最小单位；
+        * 对于byte、char、float、int、short、boolean 和returnAddress等长度**不超过32位**的数据类型，每个局部变量占用**1个Slot**；
+        * double和long这两种**64位**的数据类型则需要**两个Slot**来存放；
+        * 局部变量表存放内容包括：方法参数、显式异常处理器的参数、方法中局部变量；
+        * 局部变量表中的**Slot可以重用**，Javac编译器会根据变量的作用域来分配Slot给各个变量使用，然后计算出max_locals的大小，即 max_locals 的值并非为所有局部变量占用 Slot 和；
+      * code_length 和 code用来存储 Java 源程序编译后生成的**字节码指令**；
+        * code_length代表**字节码长度**；
+        * code是用于存储**字节码指令**的一系列**字节流**；
+        * 字节码指令，一个u1类型的单字节，取值范围为0x00～0xFF，，Java虚拟机规范已经定义了其中约200条编码值对应的指令含义；
+        * code_length，u4类型的长度值，虚拟机规范限制了一个方法不允许超过65535条字节码指令，实际只使用了u2的长度，如果超过这个限制，Javac编译器也会拒绝编译；即不要编写超长的方法；
+
+      * 代码示例：我们直接查看翻译后的字节码内容：
+
+        ![1586957845522](images.assets/1586957845522.png)
+
+        属性名称 Code , 操作数栈最大深度 2， 本地变量表的容量1；参数个数 1 个；
+
+        下面的字节码指令内容含义（Java虚拟机执行字节码是基于**栈**的体系结构）：
+
+        * aload_0：将第0个Slot中为 reference类型的本地变量推送到操作数栈顶，即this当前对象；
+        * getfiled  #3 ：获取常量项3指代的变量 age 的值；
+        * iconst_1 : 生成常量 1；
+        * iadd : 上面两步涉及操作数压栈，这一步进行相加计算；
+        * ireturn : 出栈，返回计算出的 int 类型的计算结果；
+
+        其实就是对应我们语言层写的代码：
+
+        ```java
+        public int nextYearAge(){
+             return this.age + 1;
+        }
+        ```
+
+      * **显式异常处理表**
+
+        * 在字节码指令之后的 exception** 是这个方法的**显式异常处理表**;
+
+        * 异常表的格式 ：
+
+          ![1586958696573](images.assets/1586958696573.png)
+
+          包含4个字段，字段的含义为：
+
+          * 如果当字节码在第**start_pc**行到第**end_pc**行**之间**（不含第end_pc行）出现了类型为**catch_type**或者其**子类的异常**（catch_type为指向一个CONSTANT_Class_info型常量的索引），则转到第handler_pc行继续 处理；
+          * 当catch_type的值为 **0** 时，代表**任意异常情况**都需要转向到handler_pc处进行处理；
+
+        * 异常表实际上是Java代码的一部分，编译器使用**异常表**而不是简单的跳转命令来实现**Java异常**及**finally处理机制**；
+
+          例如我们添加测试代码：
+
+          ```java
+          public static int num(){
+              int x;
+          
+              try {
+                  x = 1;
+                  return x;
+              } catch (Exception e){
+                  x = 2;
+                  return x;
+              } finally {
+                  x = 3;
+              }
+          }
+          ```
+
+          编译后的字节码指令内容：
+
+          ```java
+            public int num();
+              descriptor: ()I
+              flags: ACC_PUBLIC
+              Code:
+                stack=1, locals=5, args_size=1
+                   0：iconst_1    //try块中的x=1 
+                   1：istore_1 
+                   2：iload_1     //保存x到returnValue中，此时x=1 
+                   3：istore_2 
+                   4：iconst_3    //finaly块中的x=3 
+                   5：istore_1 
+                   6：iload_2     //将returnValue中的值放到栈顶，准备给ireturn返回 
+                   7：ireturn 
+                   8：astore_2    //给catch中定义的Exception e赋值，存储在Slot 2中 
+                   9：iconst_2    //catch块中的x=2 
+                   10：istore_1 
+                   11：iload_1    //保存x到returnValue中，此时x=2 
+                   12：istore_3 
+                   13：iconst_3   //finaly块中的x=3 
+                   14：istore_1 
+                   15：iload_3    //将returnValue中的值放到栈顶，准备给ireturn返回 
+                   16：ireturn 
+                   17：astore 4   //如果出现了不属于java.lang.Exception及其子类的异常才会走到这里
+                   19：iconst_3   //finaly块中的x=3 
+                   20：istore_1 
+                   21：aload  4   //将异常放置到栈顶，并抛出 
+                   23：athrow 
+                Exception table:
+                   from    to  target type
+                       0     4     8   Class java/lang/Exception
+                       0     4    17   any
+                       8    13    17   any
+                      17    19    17   any
+                LineNumberTable:
+                  line 28: 0
+                  line 29: 2
+                  line 34: 4
+                  line 29: 6
+                  line 30: 8
+                  line 31: 9
+                  line 32: 11
+                  line 34: 13
+                  line 32: 15
+                  line 34: 17
+                  line 35: 21
+                LocalVariableTable:
+                  Start  Length  Slot  Name   Signature
+                      2       6     1     x   I
+                      9       8     2     e   Ljava/lang/Exception;
+                     11       6     1     x   I
+                      0      24     0  this   Lcom/skylaker/jvm/bytecode/Student;
+                     21       3     1     x   I
+                StackMapTable: number_of_entries = 2
+                  frame_type = 72 /* same_locals_1_stack_item */
+                    stack = [ class java/lang/Exception ]
+                  frame_type = 72 /* same_locals_1_stack_item */
+                    stack = [ class java/lang/Throwable ]
+          
+          ```
+
+          可以看到 finally 执行的方式本质就是在 try 、catch 语句块对应位置放置 finally 中指令内容。
+
+    ​	
+
