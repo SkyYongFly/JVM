@@ -19,8 +19,16 @@ public class Student {
         this.name = name;
     }
 
-    public int nextYearAge(){
+    public synchronized int nextYearAge(){
         return this.age + 1;
+    }
+
+    private Object lock = new Object();
+
+    public String getAddress(){
+        synchronized (lock) {
+            return "中国";
+        }
     }
 
 //    public static int num(){

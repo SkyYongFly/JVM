@@ -280,7 +280,7 @@ public class Student {
 
 * **属性表集合**
   
-* 在descriptor_index 之后的一个属性表集合用于存储一些额外的信息，字段都可以在属性表中描述零至多项 的额外信息，例如字段的初始设值信息（介绍属性表数据项目再详解）
+  在descriptor_index 之后的一个属性表集合用于存储一些额外的信息，字段都可以在属性表中描述零至多项 的额外信息，例如**字段的初始设值信息**（介绍属性表数据项目再详解）
   
 * 示例代码
 
@@ -368,158 +368,516 @@ public class Student {
   ![1586956169217](images.assets/1586956169217.png)
 
   * 第一个名称需要从常量池中引用一个CONSTANT_Utf8_info类型的常量来表示；
-
   * 第二个为u4的长度属性，说明属性值所占用的位数；
   * 第三个就是对应的详细的属性内容，长度即第二个参数定义的值；
 
-* 详细的属性说明
+###### 2.9.1 **Code 属性**
 
-  * **Code 属性**
+* Java程序方法体中的代码经过 Javac 编译器处理，变为字节码指令存储在Code属性内；
 
-    * Java程序方法体中的代码经过 Javac 编译器处理，变为字节码指令存储在Code属性内；
+* Code属性出现在方法表的属性集合之中；
 
-    * Code属性出现在方法表的属性集合之中；
+* 并非所有的方法表都必须存在这个属性，譬如接口或者抽象类中的方法就不存在Code属性；
 
-    * 并非所有的方法表都必须存在这个属性，譬如接口或者抽象类中的方法就不存在Code属性；
+* Code 属性表结构：
 
-    * Code 属性表结构：
+  ![1586956369192](images.assets/1586956369192.png)
 
-      ![1586956369192](images.assets/1586956369192.png)
+  * attribute_name_index是指向CONSTANT_Utf8_info型常量的索引；常量值固定为“Code”，代表了该属性的属性名称；
+  * attribute_length指示了属性值的长度；
+  * max_stack代表了操作数栈（Operand Stacks）深度的最大值；
+  * max_locals代表了**局部变量表**所需的存储空间；
+    * max_locals的单位是**Slot**, Slot是虚拟机为局部变量分配内存所使用的最小单位；
+    * 对于byte、char、float、int、short、boolean 和returnAddress等长度**不超过32位**的数据类型，每个局部变量占用**1个Slot**；
+    * double和long这两种**64位**的数据类型则需要**两个Slot**来存放；
+    * 局部变量表存放内容包括：方法参数、显式异常处理器的参数、方法中局部变量；
+    * 局部变量表中的**Slot可以重用**，Javac编译器会根据变量的作用域来分配Slot给各个变量使用，然后计算出max_locals的大小，即 max_locals 的值并非为所有局部变量占用 Slot 和；
+  * code_length 和 code用来存储 Java 源程序编译后生成的**字节码指令**；
+    * code_length代表**字节码长度**；
+    * code是用于存储**字节码指令**的一系列**字节流**；
+    * 字节码指令，一个u1类型的单字节，取值范围为0x00～0xFF，，Java虚拟机规范已经定义了其中约200条编码值对应的指令含义；
+    * code_length，u4类型的长度值，虚拟机规范限制了一个方法不允许超过65535条字节码指令，实际只使用了u2的长度，如果超过这个限制，Javac编译器也会拒绝编译；即不要编写超长的方法；
 
-      * attribute_name_index是指向CONSTANT_Utf8_info型常量的索引；常量值固定为“Code”，代表了该属性的属性名称；
-      * attribute_length指示了属性值的长度；
-      * max_stack代表了操作数栈（Operand Stacks）深度的最大值；
-      * max_locals代表了**局部变量表**所需的存储空间；
-        * max_locals的单位是**Slot**, Slot是虚拟机为局部变量分配内存所使用的最小单位；
-        * 对于byte、char、float、int、short、boolean 和returnAddress等长度**不超过32位**的数据类型，每个局部变量占用**1个Slot**；
-        * double和long这两种**64位**的数据类型则需要**两个Slot**来存放；
-        * 局部变量表存放内容包括：方法参数、显式异常处理器的参数、方法中局部变量；
-        * 局部变量表中的**Slot可以重用**，Javac编译器会根据变量的作用域来分配Slot给各个变量使用，然后计算出max_locals的大小，即 max_locals 的值并非为所有局部变量占用 Slot 和；
-      * code_length 和 code用来存储 Java 源程序编译后生成的**字节码指令**；
-        * code_length代表**字节码长度**；
-        * code是用于存储**字节码指令**的一系列**字节流**；
-        * 字节码指令，一个u1类型的单字节，取值范围为0x00～0xFF，，Java虚拟机规范已经定义了其中约200条编码值对应的指令含义；
-        * code_length，u4类型的长度值，虚拟机规范限制了一个方法不允许超过65535条字节码指令，实际只使用了u2的长度，如果超过这个限制，Javac编译器也会拒绝编译；即不要编写超长的方法；
+  * 代码示例：我们直接查看翻译后的字节码内容：
 
-      * 代码示例：我们直接查看翻译后的字节码内容：
+    ![1586957845522](images.assets/1586957845522.png)
 
-        ![1586957845522](images.assets/1586957845522.png)
+    属性名称 Code , 操作数栈最大深度 2， 本地变量表的容量1；参数个数 1 个；
 
-        属性名称 Code , 操作数栈最大深度 2， 本地变量表的容量1；参数个数 1 个；
+    下面的字节码指令内容含义（Java虚拟机执行字节码是基于**栈**的体系结构）：
 
-        下面的字节码指令内容含义（Java虚拟机执行字节码是基于**栈**的体系结构）：
+    * aload_0：将第0个Slot中为 reference类型的本地变量推送到操作数栈顶，即this当前对象；
+    * getfiled  #3 ：获取常量项3指代的变量 age 的值；
+    * iconst_1 : 生成常量 1；
+    * iadd : 上面两步涉及操作数压栈，这一步进行相加计算；
+    * ireturn : 出栈，返回计算出的 int 类型的计算结果；
 
-        * aload_0：将第0个Slot中为 reference类型的本地变量推送到操作数栈顶，即this当前对象；
-        * getfiled  #3 ：获取常量项3指代的变量 age 的值；
-        * iconst_1 : 生成常量 1；
-        * iadd : 上面两步涉及操作数压栈，这一步进行相加计算；
-        * ireturn : 出栈，返回计算出的 int 类型的计算结果；
+    其实就是对应我们语言层写的代码：
 
-        其实就是对应我们语言层写的代码：
+    ```java
+    public int nextYearAge(){
+         return this.age + 1;
+    }
+    ```
 
-        ```java
-        public int nextYearAge(){
-             return this.age + 1;
-        }
-        ```
+  * **显式异常处理表**
 
-      * **显式异常处理表**
+    * 在字节码指令之后的 exception** 是这个方法的**显式异常处理表**;
 
-        * 在字节码指令之后的 exception** 是这个方法的**显式异常处理表**;
+    * 异常表的格式 ：
 
-        * 异常表的格式 ：
+      ![1586958696573](images.assets/1586958696573.png)
 
-          ![1586958696573](images.assets/1586958696573.png)
+      包含4个字段，字段的含义为：
 
-          包含4个字段，字段的含义为：
+      * 如果当字节码在第**start_pc**行到第**end_pc**行**之间**（不含第end_pc行）出现了类型为**catch_type**或者其**子类的异常**（catch_type为指向一个CONSTANT_Class_info型常量的索引），则转到第handler_pc行继续 处理；
+      * 当catch_type的值为 **0** 时，代表**任意异常情况**都需要转向到handler_pc处进行处理；
 
-          * 如果当字节码在第**start_pc**行到第**end_pc**行**之间**（不含第end_pc行）出现了类型为**catch_type**或者其**子类的异常**（catch_type为指向一个CONSTANT_Class_info型常量的索引），则转到第handler_pc行继续 处理；
-          * 当catch_type的值为 **0** 时，代表**任意异常情况**都需要转向到handler_pc处进行处理；
+    * 异常表实际上是Java代码的一部分，编译器使用**异常表**而不是简单的跳转命令来实现**Java异常**及**finally处理机制**；
 
-        * 异常表实际上是Java代码的一部分，编译器使用**异常表**而不是简单的跳转命令来实现**Java异常**及**finally处理机制**；
+      例如我们添加测试代码：
 
-          例如我们添加测试代码：
-
-          ```java
-          public static int num(){
-              int x;
-          
-              try {
-                  x = 1;
-                  return x;
-              } catch (Exception e){
-                  x = 2;
-                  return x;
-              } finally {
-                  x = 3;
-              }
+      ```java
+      public static int num(){
+          int x;
+      
+          try {
+              x = 1;
+              return x;
+          } catch (Exception e){
+              x = 2;
+              return x;
+          } finally {
+              x = 3;
           }
-          ```
+      }
+      ```
 
-          编译后的字节码指令内容：
+      编译后的字节码指令内容：
 
-          ```java
-            public int num();
-              descriptor: ()I
-              flags: ACC_PUBLIC
-              Code:
-                stack=1, locals=5, args_size=1
-                   0：iconst_1    //try块中的x=1 
-                   1：istore_1 
-                   2：iload_1     //保存x到returnValue中，此时x=1 
-                   3：istore_2 
-                   4：iconst_3    //finaly块中的x=3 
-                   5：istore_1 
-                   6：iload_2     //将returnValue中的值放到栈顶，准备给ireturn返回 
-                   7：ireturn 
-                   8：astore_2    //给catch中定义的Exception e赋值，存储在Slot 2中 
-                   9：iconst_2    //catch块中的x=2 
-                   10：istore_1 
-                   11：iload_1    //保存x到returnValue中，此时x=2 
-                   12：istore_3 
-                   13：iconst_3   //finaly块中的x=3 
-                   14：istore_1 
-                   15：iload_3    //将returnValue中的值放到栈顶，准备给ireturn返回 
-                   16：ireturn 
-                   17：astore 4   //如果出现了不属于java.lang.Exception及其子类的异常才会走到这里
-                   19：iconst_3   //finaly块中的x=3 
-                   20：istore_1 
-                   21：aload  4   //将异常放置到栈顶，并抛出 
-                   23：athrow 
-                Exception table:
-                   from    to  target type
-                       0     4     8   Class java/lang/Exception
-                       0     4    17   any
-                       8    13    17   any
-                      17    19    17   any
-                LineNumberTable:
-                  line 28: 0
-                  line 29: 2
-                  line 34: 4
-                  line 29: 6
-                  line 30: 8
-                  line 31: 9
-                  line 32: 11
-                  line 34: 13
-                  line 32: 15
-                  line 34: 17
-                  line 35: 21
-                LocalVariableTable:
-                  Start  Length  Slot  Name   Signature
-                      2       6     1     x   I
-                      9       8     2     e   Ljava/lang/Exception;
-                     11       6     1     x   I
-                      0      24     0  this   Lcom/skylaker/jvm/bytecode/Student;
-                     21       3     1     x   I
-                StackMapTable: number_of_entries = 2
-                  frame_type = 72 /* same_locals_1_stack_item */
-                    stack = [ class java/lang/Exception ]
-                  frame_type = 72 /* same_locals_1_stack_item */
-                    stack = [ class java/lang/Throwable ]
-          
-          ```
+      ```java
+        public int num();
+          descriptor: ()I
+          flags: ACC_PUBLIC
+          Code:
+            stack=1, locals=5, args_size=1
+               0：iconst_1    //try块中的x=1 
+               1：istore_1 
+               2：iload_1     //保存x到returnValue中，此时x=1 
+               3：istore_2 
+               4：iconst_3    //finaly块中的x=3 
+               5：istore_1 
+               6：iload_2     //将returnValue中的值放到栈顶，准备给ireturn返回 
+               7：ireturn 
+               8：astore_2    //给catch中定义的Exception e赋值，存储在Slot 2中 
+               9：iconst_2    //catch块中的x=2 
+               10：istore_1 
+               11：iload_1    //保存x到returnValue中，此时x=2 
+               12：istore_3 
+               13：iconst_3   //finaly块中的x=3 
+               14：istore_1 
+               15：iload_3    //将returnValue中的值放到栈顶，准备给ireturn返回 
+               16：ireturn 
+               17：astore 4   //如果出现了不属于java.lang.Exception及其子类的异常才会走到这里
+               19：iconst_3   //finaly块中的x=3 
+               20：istore_1 
+               21：aload  4   //将异常放置到栈顶，并抛出 
+               23：athrow 
+            Exception table:
+               from    to  target type
+                   0     4     8   Class java/lang/Exception
+                   0     4    17   any
+                   8    13    17   any
+                  17    19    17   any
+            LineNumberTable:
+              line 28: 0
+              line 29: 2
+              line 34: 4
+              line 29: 6
+              line 30: 8
+              line 31: 9
+              line 32: 11
+              line 34: 13
+              line 32: 15
+              line 34: 17
+              line 35: 21
+            LocalVariableTable:
+              Start  Length  Slot  Name   Signature
+                  2       6     1     x   I
+                  9       8     2     e   Ljava/lang/Exception;
+                 11       6     1     x   I
+                  0      24     0  this   Lcom/skylaker/jvm/bytecode/Student;
+                 21       3     1     x   I
+            StackMapTable: number_of_entries = 2
+              frame_type = 72 /* same_locals_1_stack_item */
+                stack = [ class java/lang/Exception ]
+              frame_type = 72 /* same_locals_1_stack_item */
+                stack = [ class java/lang/Throwable ]
+      
+      ```
 
-          可以看到 finally 执行的方式本质就是在 try 、catch 语句块对应位置放置 finally 中指令内容。
+      可以看到 finally 执行的方式本质就是在 try 、catch 语句块对应位置放置 finally 中指令内容。
 
-    ​	
+###### 	2.9.2 LineNumberTable属性 
 
+* **行号表属性**用于描述Java源码行号与字节码行号（字节码的偏移量）之间的对应关系；
+
+* 非必须，可以在Javac中分别使用-g：none或-g：lines选项来取消或要求生成这项信息；
+
+* 程序调试断点、异常抛出时显示的行号就是根据这个行号表来的，即查找字节码指令对应的源码行号；
+
+* 结构
+
+  <img src="images.assets/1587174429910.png" alt="1587174429910" style="zoom:80%;" />
+
+  其中line_number_table是一个数量为line_number_table_length、类型为line_number_info的集 
+
+  合，line_number_info表包括了**start_pc**和**line_number**两个u2类型的数据项，前者是**字节码行** 
+
+  **号**，后者是**Java源码行号**
+
+* 示例
+
+  ![1587175237416](images.assets/1587175237416.png)
+
+  可以看到行号指示器与我们的源代码是符合的：
+
+  <img src="images.assets/1587175370875.png" alt="1587175370875" style="zoom:80%;" />
+
+###### 2.9.3 LocalVariableTable 属性
+
+* **局部变量表**属性用于描述**栈帧**中**局部变量表**中的**变量**与Java**源码**中定义的**变量**之 间的关系；
+* 非必须，可在Javac中分 别使用-g：none或-g：vars选项来取消或要求生成这项信息；
+
+* 结构
+
+  ![1587176249334](images.assets/1587176249334.png)
+
+  * 其中，local_variable_info项目代表了一个栈帧与源码中的局部变量的关联，具体结构：
+
+    ![1587176336081](images.assets/1587176336081.png)
+
+    * start_pc和length属性分别代表了这个局部变量的生命周期开始的字节码偏移量及其作用范围覆盖的长度，两者结合起来就是这个局部变量在字节码之中的作用域范围；
+
+    * name_index和descriptor_index都是指向常量池中CONSTANT_Utf8_info型常量的索引，分 
+
+      别代表了**局部变量的名称**以及这个**局部变量的描述符**
+
+    * index是这个局部变量在栈帧局部变量表中**Slot的位置**；
+
+      变量数据类型是64位类型时（double和long），占用的Slot为index和index+1两个；
+
+* 示例
+
+  <img src="images.assets/1587178290082.png" alt="1587178290082" style="zoom:80%;" />
+
+###### 2.9.4 ConstantValue属性 
+
+* **常量值属性**的作用是通知虚拟机自动为静态变量赋值；
+* 只有被static关键字修饰的变量（类变量）才可以使用这项属性；
+
+* 实例变量或类变量赋值地方
+
+  * 非static类型的变量（也就是**实例变量**）的赋值是在实例构造器**＜init＞**方法中进行的；
+  * 对于**类变量**，则有两种方式可以选择：在类构造器**＜clinit＞**方法中或者使用**ConstantValue属性**
+
+  * Sun Javac编译器的选择：
+    * 如果同时使用**final**和**static**来修饰一个变量，并且变量的数据类型是**基本类型**或**java.lang.String**的话，就生成**ConstantValue属性**来进行初始化；
+    * 如果变量**没被final**修饰，或者**非基本类型及字符串**，会选择在**＜clinit＞**方法中进行初始化；
+
+* 结构
+
+  ![1587177109413](images.assets/1587177109413.png)
+
+  * ConstantValue属性是一个定长属性，它的attribute_length数据项值必须固定为2
+
+  * constantvalue_index数据项代表了**常量池**中一个**字面量常量的引用**；
+
+    字面量可以是CONSTANT_Long_info、CONSTANT_Float_info、 CONSTANT_Double_info、CONSTANT_Integer_info、CONSTANT_String_info常量中的一种；
+
+#### 3 字节码指令
+
+##### 3.1 概述
+
+* Java虚拟机的指令由**一个字节**长度的、代表着某种特定操作含义的数字（称为**操作码**，Opcode）以及跟随其后的零至多个代表此操作所需参数（称为**操作数**，Operands）构成；
+
+  ```java
+  操作码 + 操作数
+  ```
+
+* 操作码长度限制为一个字节，则指令集的操作码总数不可能超过256条；
+
+* Java虚拟机采用面向**操作数栈**而不是寄存器的架构，所以大多数的指令都不包含操作数，只有一个操作码；
+
+* 简化的Java虚拟机解释器执行模型：
+
+  ```java
+  do { 
+      自动计算PC寄存器的值加1； 
+      根据PC寄存器的指示位置，从字节码流中取出操作码； 
+      if（字节码存在操作数）从字节码流中取出操作数； 
+      执行操作码所定义的操作； 
+  } while（字节码流长度＞0）；
+  ```
+
+##### 3.2 字节码与数据类型
+
+* 大部分与数据类型相关的字节码指令，它们的**操作码助记符**中都有**特殊的字符**来表明专门为哪种**数据类型**服务，就是我这个操作码是操作哪种数据类型的数据的：
+
+  | 操作码助记符中的特殊字符 | 对应数据类型数据 |
+  | :----------------------: | :--------------: |
+  |            i             |       int        |
+  |            l             |       long       |
+  |            s             |      short       |
+  |            b             |       byte       |
+  |            c             |       char       |
+  |            f             |      float       |
+  |            d             |      double      |
+  |            a             |    reference     |
+
+  例如 **iload** 指令用于从局部变量表中加载 **int** 型的数据到操作数栈中 ；
+
+* 类似 arraylength 指令，没有代表数据类型的特殊字符，但操作数只能是一个数组类型的对象；
+
+* 无条件跳转指令 goto 则是与数据类型无关的；
+
+* 并非每种数据类型和每一种操作都有对应的指令；
+
+  有一些单独的指令可以在必要的时候用来将一些不支持的类型转换为可被支持的类型
+
+* Java虚拟机所支持的与数据类型相关的字节码指令：
+
+  <img src="images.assets/1587180243489.png" alt="1587180243489" style="zoom:80%;" />
+
+  * 大多数对于boolean、byte、short 和char类型数据的操作，实际上都是使用相应的 int 类型作为运算类型（Computational Type）；
+
+##### 3.3 加载和存储指令 
+
+* 加载和存储指令用于将数据在**栈帧**中的**局部变量表**和**操作数栈**之间来回传输；
+
+* 指令分类
+
+  * 将局部变量加载到操作栈
+
+    iload、iload_＜n＞、lload、lload_＜n＞、fload、fload_ ＜n＞、dload、dload_＜n＞、aload、aload_＜n＞
+
+  * 将数值从操作数栈存储到局部变量表
+
+    istore、istore_＜n＞、lstore、lstore_＜n＞、fstore、fstore_＜n＞、dstore、dstore_＜n＞、astore、astore_＜n＞
+
+  * 将常量加载到操作数栈
+
+    bipush、sipush、ldc、ldc_w、ldc2_w、aconst_null、 iconst_m1、iconst_＜i＞、_
+
+    lconst_＜l＞、fconst_＜f＞、dconst_＜d＞。
+
+  * 扩充局部变量表的访问索引的指令
+
+    wide
+
+* 一部分是以尖括号结尾的（例如iload_＜n＞），这些指 令助记符实际上是代表了一组指令（例如iload＜n＞*，它代表了iload_0、iload_1、iload_2和 iload_3这几条指令）
+
+##### 3.4 运算指令 
+
+* 运算或算术指令用于对**两个**操作数**栈上的值**进行某种**特定运算**，并把**结果**重新**存入**到操 
+
+  作**栈顶**；
+
+* 可以分为两种：对**整型数据**进行运算的指令与**对浮点型数据**进行运算的指令
+
+  ```java
+  加法指令：iadd、ladd、fadd、dadd。 
+  
+  减法指令：isub、lsub、fsub、dsub。 
+  
+  乘法指令：imul、lmul、fmul、dmul。 
+  
+  除法指令：idiv、ldiv、fdiv、ddiv。 
+  
+  求余指令：irem、lrem、frem、drem。 
+  
+  取反指令：ineg、lneg、fneg、dneg。 
+  
+  位移指令：ishl、ishr、iushr、lshl、lshr、lushr。 
+  
+  按位或指令：ior、lor。 
+  
+  按位与指令：iand、land。 
+  
+  按位异或指令：ixor、lxor。 
+  
+  局部变量自增指令：iinc。 
+  
+  比较指令：dcmpg、dcmpl、fcmpg、fcmpl、lcmp。
+  ```
+
+* 最接近数舍入模式
+
+  Java虚拟机要求在进行浮点数运算时，所有的运算结果都必须**舍入到适当的精度**，非精确的结果必须舍入为可被表示的**最接近**的精确值，如果有两种可表示的形式与该值一样接 近，将**优先选择最低有效位为零的**
+
+##### 3.6 类型转换指令
+
+* 类型转换指令可以将两种不同的数值类型进行相互转换；
+
+* 一般用于实现用户代码中的**显式类型转换**操作，或者用来处理本节开篇所提到的字节码指令集中数据类型相关指令无法与数据类型一一对应的问题;
+
+* Java虚拟机直接支持（即转换时**无需显式的转换指令**）以下数值类型的宽化类型转换（小范围类型向大范围类型的安全转换） ：
+
+  ```
+  int类型到long、float或者double类型
+  long类型到float、double类型
+  float类型到double类型
+  ```
+
+* 窄化类型转换时，必须显式地使用转换指令来完成，包括：
+
+  ```
+  i2b、i2c、i2s、l2i、f2i、f2l、d2i、d2l和d2f
+  ```
+
+##### 3.7 对象创建与访问指令
+
+* 对象访问指令获取对象实例或者数组实例中的字段或者数组元素
+
+  ```java
+  创建类实例的指令：new
+  
+  创建数组的指令：newarray、anewarray、multianewarray
+  
+  访问类字段（static字段，或者称为类变量）和实例字段（非static字段，或者称为实例变 量）的指令：getfield、putfield、getstatic、putstatic
+  
+  把一个数组元素加载到操作数栈的指令：baload、caload、saload、iaload、laload、 faload、daload、aaload
+  
+  将一个操作数栈的值存储到数组元素中的指令：bastore、castore、sastore、iastore、 fastore、dastore、aastore
+  
+  取数组长度的指令：arraylength
+  
+  检查类实例类型的指令：instanceof、checkcast
+  ```
+
+* 类实例和数组都是对象，但Java虚拟机对类实例和数组的创建与操作使用了不同的字节码指令
+
+##### 3.8 操作数栈管理指令
+
+* 如同操作一个普通数据结构中的堆栈那样，Java虚拟机提供了一些用于直接操作操作数栈的指令
+
+  ```
+  将操作数栈的栈顶一个或两个元素出栈：pop、pop2
+  
+  复制栈顶一个或两个数值并将复制值或双份的复制值重新压入栈顶：dup、dup2、 dup_x1、dup2_x1、dup_x2、dup2_x2
+  
+  将栈最顶端的两个数值互换：swap
+  ```
+
+##### 3.9 控制转移指令
+
+* 控制转移指令可以让Java虚拟机有条件或无条件地从**指定的位置指令**而不是控制转移指令的下一条指令**继续执行程序**，从概念模型上理解，可以认为控制转移指令就是在有条件或无条件地**修改PC寄存器的值**；
+
+  ```
+  条件分支：ifeq、iflt、ifle、ifne、ifgt、ifge、ifnull、ifnonnull、if_icmpeq、if_icmpne、 if_icmplt、if_icmpgt、if_icmple、if_icmpge、if_acmpeq和if_acmpne
+  
+  复合条件分支：tableswitch、lookupswitch
+  
+  无条件分支：goto、goto_w、jsr、jsr_w、ret
+  ```
+
+* 对于boolean类型、byte类型、char类型和short类型的条件分支比较操作，都是使用**int类型的比较指令**来完成；
+* 对于long类型、float类型和double类型的条件分支比较操作，则会**先执行相应类型的比较运算指令**（dcm pg、dcmpl、fcmpg、 fcmpl、lcmp），运算指令会返回一个**整型值**到操作数栈中，随后**再执行int类型的条件分支比较操作**来完成整个分支跳转；
+
+##### 3.10 方法调用和返回指令 
+
+* 方法调用指令与数据类型无关，部分方法调用指令
+
+  ```
+  invokevirtual指令用于调用对象的实例方法，根据对象的实际类型进行分派（虚方法分派），这也是Java语言中最常见的方法分派方式。 
+  
+  invokeinterface指令用于调用接口方法，它会在运行时搜索一个实现了这个接口方法的对象，找出适合的方法进行调用。 
+  
+  invokespecial指令用于调用一些需要特殊处理的实例方法，包括实例初始化方法、私有方法和父类方法。 
+  
+  invokestatic指令用于调用类方法（static方法）。 
+  
+  invokedynamic指令用于在运行时动态解析出调用点限定符所引用的方法，并执行该方法，前面4条调用指令的分派逻辑都固化在Java虚拟机内部，而invokedynamic指令的分派逻辑是由用户所设定的引导方法决定的。
+  ```
+
+* 方法返回指令是根据返回值的类型区分的
+
+  ```
+  ireturn（当返回值是boolean、byte、char、short和int类型时使用）
+  lreturn
+  freturn
+  dreturn 
+  areturn
+  return指令：供声明为void的方法、实例初始化方法以及类和接口的类初始化方法使用
+  ```
+
+##### 3.11 异常处理指令
+
+* 在Java程序中**显式抛出异常**的操作（**throw**语句）都由 **athrow** 指令来实现
+
+* 在Java虚拟机中，处理异常（**catch**语句）不是由字节码指令来实现的，而是采用**异常表**来完成
+
+##### 3.12 同步指令
+
+* Java虚拟机可以支持**方法级**的同步和**方法内部一段指令序列**的同步，这两种同步结构都 
+
+  是使用**管程（Monitor）**来支持的，即 synchronized 的底层虚拟机支持方式；
+
+* 方法级同步原理及相关逻辑
+
+  * 方法级同步是**隐式**的，即无须通过字节码指令来控制，它实现在方法调用和返回操作之中
+
+  * 虚拟机可以从方法常量池的方法表结构中的**ACC_SYNCHRONIZED**访问标志得知一个方法是否声明为同步方法。
+
+  * 当方法调用时，调用指令将会检查方法的ACC_SYNCHRONIZED 访问标志是否被设置，如果设置了，执行线程就要求**先成功持有管程**，**然后才能执行方法**， 最后当**方法完成**（无论是正常完成还是非正常完成）时**释放管程**。
+
+  * 在方法执行期间，执行线程持有了管程，其他任何线程都无法再获取到同一个管程，即同步互斥；
+
+  * 如果一个同步方法执行期间抛出了异常，并且在方法内部无法处理此异常，那么这个同步方法所持有的管程将在异常抛到同步方法之外时**自动释放**，即方法处理产生异常会自动释放线程持有的锁对象；
+
+  * 例如：
+
+    ```java
+    public synchronized int nextYearAge(){
+    	return this.age + 1;
+    }
+    ```
+
+    编译后的字节码内容：
+
+    ![1587188995080](images.assets/1587188995080.png)
+
+* 代码块同步逻辑
+
+  * 同步一段指令集序列通常是由Java语言中的 **synchronized** 语句块来表示的，Java虚拟机的指令集中有 **monitorenter** 和 **monitorexit** 两条指令来支持synchronized关键字的语义
+  * 正确实现 synchronized关键字需要Javac编译器与Java虚拟机两者共同协作支持，因为编译器在编译的时候需要插入 monitorenter 和 monitorexit 指令；
+
+  * 例如：
+
+    ```java
+    private Object lock = new Object();
+    
+    public String getAddress(){
+        synchronized (lock) {
+            return "中国";
+        }
+    }
+    ```
+
+    对应字节码内容：
+
+    ![1587189185897](images.assets/1587189185897.png)
+
+    为了保证在方法异常完成时monitorenter和 monitorexit指令依然可以正确配对执行，编译器会自动产生一个异常处理器，这个异常处理器声明可处理所有的异常，它的目的就是用来执行monitorexit指令。
+
+#### 4 公有设计和私有实现
+
+* Java虚拟机规范描绘了Java虚拟机应有的共同程序存储格式：Class文件格式以及字节码指令集；
+* Java虚拟机实现必须能够读取Class文件并精确实现包含在其中的Java虚拟机代码的语义；
+* 虚拟机在满足虚拟机规范的约束下可对具体实现做出修改和优化，来让Java虚拟机获得更高的性能、更低的内存消耗或者更好的可移植性；
+
+* 虚拟机实 现的方式主要有以下两种： 
+
+  * 将输入的虚拟机代码在加载或执行时翻译成另外一种虚拟机的指令集。 
+
+  * 将输入的虚拟机代码在加载或执行时翻译成宿主机CPU的本地指令集（即JIT代码生成技术）
