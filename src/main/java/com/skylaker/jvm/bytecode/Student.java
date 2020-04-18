@@ -5,9 +5,7 @@ package com.skylaker.jvm.bytecode;
  * @version V1.0 2020/4/13 20:30
  */
 public class Student {
-    public static void main(String[] args) {
-        System.out.println("" + num());
-    }
+    private static final String address = "南京";
 
     private int age;
 
@@ -25,21 +23,21 @@ public class Student {
         return this.age + 1;
     }
 
-    public static int num(){
-        int x;
-
-        try {
-            x = 1;
-            int a = 1/0;
-            return x;
-        } catch (Exception e){
-            x = 2;
-            return x;
-        } finally {
-            System.out.println("asds");
-            x = 3;
-        }
-    }
+//    public static int num(){
+//        int x;
+//
+//        try {
+//            x = 1;
+//            int a = 1/0;
+//            return x;
+//        } catch (Exception e){
+//            x = 2;
+//            return x;
+//        } finally {
+//            System.out.println("asds");
+//            x = 3;
+//        }
+//    }
 
     public int getAge() {
         return age;
