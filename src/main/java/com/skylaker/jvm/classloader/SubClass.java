@@ -10,4 +10,10 @@ public class SubClass extends SuperClass{
     }
 
     public static final String HELLOWORLD = "hello world";
+
+    public static  String NAME = "SUB CLASS";
+
+    public static void info(){
+        System.out.println("Hello, I am Subclass !");
+    }
 }

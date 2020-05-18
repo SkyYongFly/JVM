@@ -37,20 +37,20 @@
 
 ### 2.2 **何时触发类加载**
 
-* **5种主动引用触发加载时机**
+#### 2.3.1 **5种主动引用触发加载**
 
-  Java虚拟机规范中并没有进行强制约束，但是对于**初始化**阶段，虚拟机规范则是严格规定了**有且只有5种**情况必须立即对类进行“初始化”（而加载、验证、准备自然需要在此之前开始，即也就是在这5种情况下会触发类加载），即对一个类进行**主动引用**时候：
+Java虚拟机规范中并没有进行强制约束，但是对于**初始化**阶段，虚拟机规范则是严格规定了**有且只有5种**情况必须立即对类进行“初始化”（而加载、验证、准备自然需要在此之前开始，即也就是在这5种情况下会触发类加载），即对一个类进行**主动引用**时候：
 
-  * **1）**遇到**new**、**getstatic**、**putstatic** 或 **invokestatic **这4条字节码指令时，如果类没有进行过初始化，则需要先触发其初始化。生成这4条指令的最常见的Java代码场景是：
-    * 使用 **new** 关键字**实例化对象**的时候；
-    * 读取或设置类的**静态字段**（被final修饰、已在编译期把结果放入常量池的静态字段除外）的时候；
-    * 调用一个类的**静态方法**的时候；
-  *  **2）**使用 java.lang.reflect 包的方法对类进行**反射**调用的时候，如果类没有进行过初始化，则需要先触发其初始化； 
-  * **3）**当初始化一个类的时候，如果发现其父类还没有进行过初始化，则需要**先触发其父类**的初始化。 
-  * **4）**当虚拟机启动时，用户需要指定一个要执行的**主类**（包含main（）方法的那个类），虚拟机会先初始化这个主类。 
-  * **5）**当使用JDK 1.7的动态语言支持时，如果一个java.lang.invoke.MethodHandle实例最后的解析结果REF_getStatic、REF_putStatic、REF_invokeStatic的方法句柄，并且这个方法句柄所对应的类没有进行过初始化，则需要先触发其初始化。 
+* **1）**遇到**new**、**getstatic**、**putstatic** 或 **invokestatic **这4条字节码指令时，如果类没有进行过初始化，则需要先触发其初始化。生成这4条指令的最常见的Java代码场景是：
+  * 使用 **new** 关键字**实例化对象**的时候；
+  * 读取或设置类的**静态字段**（被final修饰、已在编译期把结果放入常量池的静态字段除外）的时候；
+  * 调用一个类的**静态方法**的时候；
+*  **2）**使用 java.lang.reflect 包的方法对类进行**反射**调用的时候，如果类没有进行过初始化，则需要先触发其初始化； 
+* **3）**当初始化一个类的时候，如果发现其父类还没有进行过初始化，则需要**先触发其父类**的初始化。 
+* **4）**当虚拟机启动时，用户需要指定一个要执行的**主类**（包含main（）方法的那个类），虚拟机会先初始化这个主类。 
+* **5）**当使用JDK 1.7的动态语言支持时，如果一个java.lang.invoke.MethodHandle实例最后的解析结果REF_getStatic、REF_putStatic、REF_invokeStatic的方法句柄，并且这个方法句柄所对应的类没有进行过初始化，则需要先触发其初始化。 
 
-* **被动加载例子**
+#### 2.3.2 **被动加载例子**
 
 ```java
 public class SuperClass {
@@ -88,9 +88,112 @@ public class ClassLoaderService {
 
 ​	运行结果中没有出现子类 SubClass 初始化打印内容，因为这三种都是被动使用，非主动引用，从而触发不了类加载。
 
-* **主动引用触发类加载**
+#### 2.3.3 **主动引用触发类加载**
 
-* **接口的触发加载**
+* new 创建对象实例
+
+  ```java
+  SubClass subClass = new SubClass();
+  ```
+
+  运行结果：
+
+  ![1589806627672](images.assets/1589806627672.png)
+
+* 读取或设置类的静态字段（非final)
+
+  ```java
+  public class SubClass extends SuperClass{
+      static {
+          System.out.println("SubClass init !");
+      }
+  
+      public static  String NAME = "SUB CLASS";
+  }
+  
+  public class ClassLoaderService {
+      public static void main(String[] args) {
+          // **** 主动引用：触发类加载 ****
+          // 读取类的静态字段（非final）
+          System.out.println(SubClass.NAME);
+      }
+  }
+  ```
+
+  运行结果：
+
+  ![1589806772457](images.assets/1589806772457.png)
+
+* 调用一个类的静态方法
+
+  ```java
+  public class SubClass extends SuperClass{
+      static {
+          System.out.println("SubClass init !");
+      }
+  
+      public static void info(){
+          System.out.println("Hello, I am Subclass !");
+      }
+  }
+  
+  public class ClassLoaderService {
+      public static void main(String[] args) {
+          // **** 主动引用：触发类加载 ****
+          SubClass.info();
+      }
+  }
+  ```
+
+  运行结果：
+
+  ![1589806904168](images.assets/1589806904168.png)
+
+* 反射
+
+  ```java
+  public class ClassLoaderService {
+      public static void main(String[] args) {
+          // **** 主动引用：触发类加载 ****
+          try {
+              Class clazz = Class.forName(SubClass.class.getName());
+          } catch (ClassNotFoundException e) {
+              e.printStackTrace();
+          }
+      }
+  }
+  ```
+
+  运行结果：
+
+  ![1589807102185](images.assets/1589807102185.png)
+
+* 先触发其父类
+
+  被动使用例子中子类使用父类的静态常量就触发了父类先初始化；
+
+* 先初始化主类
+
+  这里直接用 main 方法演示：
+
+  ```java
+  public class ClassLoaderService {
+      static {
+          System.out.println("MAIN");
+      }
+  
+      public static void main(String[] args) {
+          System.out.println("主类开始调用其它类");
+          // **** TODO ****
+      }
+  }
+  ```
+
+  运行结果：
+
+  ![1589807389547](images.assets/1589807389547.png)
+
+#### 2.3.4 **接口的触发加载**
 
 接口与类真正有所区别的是前面讲述的5种“有且仅有”需要开始初始化场景中的第3种：
 
