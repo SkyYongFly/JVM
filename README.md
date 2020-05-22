@@ -11,8 +11,12 @@
       - [垃圾收集器](https://github.com/SkyYongFly/JVM/blob/master/note/6%20GarbageCollection.md)
       - [内存分配与回收策略](https://github.com/SkyYongFly/JVM/blob/master/note/7%20MemoryAllocation.md)
     - 1.3 虚拟机性能监控与故障处理 TODO
+    
 - 2 虚拟机执行子系统 
     - 2.1 类文件结构
       - [Class字节码文件](https://github.com/SkyYongFly/JVM/blob/master/note/9%20ClassFile.md)
+    - 2.2 虚拟机类加载机制
+      - [虚拟机类加载机制](https://github.com/SkyYongFly/JVM/blob/master/note/10%20ClassLoader.md)
 - 3 程序编译与代码优化 TODO
+
 - 4 高效并发 TODO
