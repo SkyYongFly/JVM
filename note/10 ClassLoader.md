@@ -326,7 +326,7 @@ public class ClassLoaderService {
 
 * 到初始化阶段，才真正开始**执行**类中定义的**Java程序代码**（或者说是字节码）；
 
-* 在初始化阶段，根据程序员通过程序制定的主观计划去初始化类变量和其他资源，换种说法：
+* 在初始化阶段，根据程序员通过程序制定的主观计划去初始化类变量和其他资源，或换种说法：
 
   初始化阶段是执行类构造器**＜clinit＞()** 方法的过程 ;
 
@@ -372,3 +372,99 @@ public class ClassLoaderService {
 
     如果在一个类的＜clinit＞（）方法中有耗时很长的操作，就可能造成多个进程阻塞；
 
+## 4 类加载器
+
+### 4.1 作用
+
+通过一个类的全限定名来**获取**描述此类的**二进制字节流** 
+
+### 4.2 类与类加载器
+
+* 类加载器虽然**只**用于实现类的**加载**动作，但它在Java程序中起到的作用却远远**不限于类加载阶段**；
+
+* 任意一个类，都要由加载它的**类加载器**和这个**类本身**一同确立其在Java虚拟机中的**唯一性**；
+
+  ```java
+  public class ClassLoaderTest {
+      public static void main(String[] args) throws ClassNotFoundException, IllegalAccessException, InstantiationException {
+          ClassLoader myLoader = new ClassLoader(){
+              @Override
+              public Class<?> loadClass(String name) throws ClassNotFoundException{
+                  try{
+                      String fileName = 
+                          name.substring(name.lastIndexOf(".") + 1 ) + ".class";
+                      InputStream is = getClass().getResourceAsStream(fileName);
+                      if(is == null){
+                          return super.loadClass(name);
+                      }
+  
+                      byte[] b = new byte[is.available()];
+                      is.read(b);
+  
+                      return defineClass(name,b,0,b.length);
+                  }catch(IOException e){
+                      throw new ClassNotFoundException(name);
+                  }
+              }
+          };
+  
+          Object obj= myLoader.loadClass("com.skylaker.jvm.classloader.ClassLoaderTest").newInstance();
+          System.out.println(obj.getClass());
+          System.out.println(obj instanceof ClassLoaderTest);
+      }
+  }
+  ```
+
+  ![1590414355341](images.assets/1590414355341.png)
+
+  利用自定义的类加载器加载 ClassLoaderTest 类后和 默认系统应用程序类加载器加载的 ClassLoaderTest 不是同一个类型，是两个独立的类。
+
+### 4.3 双亲委派模型
+
+* **虚拟机角度**，只存在两种类加载器：
+  * 一种是**启动类加载器** （Bootstrap ClassLoader），使用**C++**语言实现，是**虚拟机自身的一部分**；
+  * 一种就是所有**其他的类加载器**，都由**Java**语言实现，独立于虚拟机**外部**，并且全都继承自抽象类 **java.lang.ClassLoader** 。
+
+* Java 开发人员角度：
+
+  <img src="images.assets/1590415309443.png" alt="1590415309443" style="zoom: 67%;" />
+
+  * **启动类加载器**（Bootstrap ClassLoader）
+    * 负责将存放在`＜JAVA_HOME＞\lib` 目录中的，或者被 -Xbootclasspath 参数所指定的路径中的，并且是虚拟机识别的类库加载到虚拟机内存中;
+    * 启动类加载器无法被Java程序直接引用，用户在编写自定义类加载器时，如果需要把加载请求委派给引导类加载器，那直接使用null代替即可 ;
+  * **扩展类加载器**（Extension ClassLoader）
+    * 由sun.misc.Launcher$ExtClassLoader实现
+    * 负责加载`＜JAVA_HOME＞\lib\ext `目录中的，或被java.ext.dirs系统变量所指定的路径中的所有类库
+    * 开发者可以直接使用扩展类加载器;
+
+  * **应用程序类加载器**（Application ClassLoader）
+    * 这个类加载器由sun.misc.Launcher $App-ClassLoader实现;
+    * 由于这个类加载器是ClassLoader中 的 getSystemClassLoader（）方法的返回值，所以一般也称它为系统类加载器
+    * 它负责加载用户类路径（ClassPath）上所指定的类库 ;
+    * 开发者可以直接使用这个类加载器，如果应用程序中没有自定义过自己的类加载器，一 般情况下这个就是程序中默认的类加载器 ；
+  * **自定义的类加载器**；
+
+* 类加载器之间的这种**层次关系**，称为类加载器的**双亲委派模型**（Parents Delegation Model）
+
+  * 双亲委派模型要求除了顶层的启动类加载器外，其余的类加载器都应当自己的父类加载器；
+  * 类加载器之间的父子关系一般不会以继承（Inheritance）的关系来实现，而是都使用**组合**（Composition）关系来**复用**父加载器的代码 ；
+
+* 
+
+* 双亲委派模型的**工作过程**
+
+  如果一个类加载器收到了类加载的请求，它首先不会自己去尝试加载这个类，而是把这个**请求委派给父类加载器去完成**，每一个层次的类加载器都是如此，因此所有的加载请求最终都应该传送到顶层的启动类加载器中，只有当父加载器反馈自己无法完成这个加载请求（它的搜索范围中没有找到所需的类）时，子加载器才会尝试自 己去加载 。
+
+* **重要作用**
+
+  保证Java程序的**稳定性、安全性**，Java类随着类加载器一起具备了一种带有优先级的层次关系，我们不能随意定义核心类库中的类进行覆写。
+
+### 4.4 破坏双亲委派模型 
+
+* 双亲委派模型并不是一个强制性的约束模型，而是Java设计者推荐给开发者的类加载器实现方式。
+
+* Java中大部分的类加载器都遵循双亲委派模型，但也有例外，例如：
+
+  基础类调用用户的代码的 JNDI、JDBC ；
+
+  代码热替换（HotSwap）、模块热部署（HotDeployment）等
